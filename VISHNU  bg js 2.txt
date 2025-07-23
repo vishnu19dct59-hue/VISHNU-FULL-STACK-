@@ -1,0 +1,50 @@
+let currentTabId = null;
+let currentDomain = null;
+let startTime = null;
+
+function getDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function updateTime(domain) {
+  if (!domain || !startTime) return;
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  chrome.storage.local.get(['timeData'], (result) => {
+    const timeData = result.timeData || {};
+    timeData[domain] = (timeData[domain] || 0) + elapsed;
+    chrome.storage.local.set({ timeData });
+  });
+}
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const tab = await chrome.tabs.get(activeInfo.tabId);
+  const domain = getDomain(tab.url);
+
+  if (currentDomain) updateTime(currentDomain);
+  currentDomain = domain;
+  startTime = Date.now();
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab.active && changeInfo.url) {
+    const domain = getDomain(changeInfo.url);
+    if (currentDomain) updateTime(currentDomain);
+    currentDomain = domain;
+    startTime = Date.now();
+  }
+});
+
+chrome.idle.onStateChanged.addListener((newState) => {
+  if (newState === 'idle' || newState === 'locked') {
+    updateTime(currentDomain);
+    currentDomain = null;
+    startTime = null;
+  } else if (newState === 'active') {
+    startTime = Date.now();
+  }
+});

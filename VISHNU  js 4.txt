@@ -1,0 +1,25 @@
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
+chrome.storage.local.get(['timeData'], (result) => {
+  const timeData = result.timeData || {};
+  const stats = document.getElementById('stats');
+  stats.innerHTML = '';
+
+  const sorted = Object.entries(timeData).sort((a, b) => b[1] - a[1]);
+
+  sorted.forEach(([domain, time]) => {
+    const li = document.createElement('li');
+    li.textContent = `${domain}: ${formatTime(time)}`;
+    stats.appendChild(li);
+  });
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+  chrome.storage.local.clear(() => {
+    location.reload();
+  });
+});
